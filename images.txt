@@ -1,6 +1,15 @@
-nginx
-#支持私库
-k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.0.0
-xhofe/alist:latest
-#支持指定架构
---platform=linux/arm64 xiaoyaliu/alist
+# 语音建卡 agentcore POC —— 本地运行所需基础镜像
+# 目标仓库 crpi-3mowg8aoaoffdd78.cn-shanghai.personal.cr.aliyuncs.com/jacky_o/
+--platform=linux/arm64 python:3.12-slim
+--platform=linux/amd64 python:3.12-slim
+--platform=linux/arm64 node:22-alpine
+--platform=linux/amd64 node:22-alpine
+--platform=linux/arm64 cloudflared/cloudflared:latest
+
+# agentscope POC —— 基础设施与构建基础镜像（本地 mac arm64）
+--platform=linux/arm64 mysql:8.0
+--platform=linux/arm64 redis:7-alpine
+--platform=linux/arm64 nacos/nacos-server:v3.3.0
+--platform=linux/arm64 maven:3.9-eclipse-temurin-17
+--platform=linux/arm64 eclipse-temurin:17-jre
+--platform=linux/arm64 nginx:alpine
