@@ -34,10 +34,13 @@ jobs:
             for plat in linux/arm64 linux/amd64; do
               TAG=$(echo "$plat" | tr '/' '_')
               TARGET="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/${img}:${TAG}"
-              # 用 imagetools 在 registry 侧直接复制（不下载层，快）；
-              # 指定 --platform 会丢掉源镜像里的 attestation 空 manifest（我们 ACR 不收那个）
+              # 用 skopeo 在 registry 侧按平台复制（不下载层，快）。
+              # 不能用 imagetools create：它会带上源镜像的 attestation 空 manifest，
+              # 我们的 ACR 拒收（unknown manifest class for application/vnd.oci.empty.v1+json）
               echo "=== copy $SRC ($plat) -> $TARGET"
-              docker buildx imagetools create --tag "$TARGET" --platform "$plat" "$SRC"
+              skopeo copy --override-os linux --override-arch "${plat#linux/}" \
+                --dest-creds "$ALIYUN_REGISTRY_USER:$ALIYUN_REGISTRY_PASSWORD" \
+                "docker://$SRC" "docker://$TARGET"
             done
           done
 
