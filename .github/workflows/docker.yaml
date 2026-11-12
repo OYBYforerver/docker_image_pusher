@@ -40,7 +40,12 @@ jobs:
         build-mount-path: '/var/lib/docker/'
 
     - name: Restart docker
-      run: sudo service docker restart
+      # Docker 29 默认 containerd image store：镜像落在 /var/lib/containerd（根分区已满），
+      # 关掉后镜像落到 /var/lib/docker（maximize-build-space 挂的 92G 卷）
+      run: |
+        sudo mkdir -p /etc/docker
+        echo '{"features":{"containerd-snapshotter":false}}' | sudo tee /etc/docker/daemon.json
+        sudo service docker restart
 
     - name: Free up disk space complete
       run: |
