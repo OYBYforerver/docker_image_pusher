@@ -1,0 +1,48 @@
+name: Sync Agentscope Service Images
+
+# 把 AgentScope Service 的官方镜像（只在阿里云杭州 ACR）同步到我们自己的 ACR
+# 线路：GitHub runner 拉杭州 ACR → 推我们上海 ACR → 本地从上海 ACR 拉（国内快）
+on:
+  workflow_dispatch:
+
+env:
+  ALIYUN_REGISTRY: "${{ secrets.ALIYUN_REGISTRY }}"
+  ALIYUN_NAME_SPACE: "${{ secrets.ALIYUN_NAME_SPACE }}"
+  ALIYUN_REGISTRY_USER: "${{ secrets.ALIYUN_REGISTRY_USER }}"
+  ALIYUN_REGISTRY_PASSWORD: "${{ secrets.ALIYUN_REGISTRY_PASSWORD }}"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker setup
+        uses: docker/setup-buildx-action@v3
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
+
+      - name: Pull from upstream ACR and push to our ACR
+        run: |
+          set -euo pipefail
+          docker login -u "$ALIYUN_REGISTRY_USER" -p "$ALIYUN_REGISTRY_PASSWORD" "$ALIYUN_REGISTRY"
+          for img in as-controlplane as-dataplane as-scheduler as-gateway; do
+            SRC="sca-registry.cn-hangzhou.cr.aliyuncs.com/agentscope/${img}:2.1.0-BETA1"
+            for plat in linux/arm64 linux/amd64; do
+              echo "=== pull $SRC ($plat)"
+              docker pull --platform=$plat "$SRC"
+              TAG=$(echo "$plat" | tr '/' '_')
+              TARGET="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/${img}:${TAG}"
+              docker tag "$SRC" "$TARGET"
+              echo "=== push $TARGET"
+              docker push "$TARGET"
+              docker rmi "$SRC" || true
+            done
+          done
+
+      - name: Summary
+        run: |
+          echo "已同步到 $ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE"
