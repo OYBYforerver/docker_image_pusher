@@ -32,14 +32,12 @@ jobs:
           for img in as-controlplane as-dataplane as-scheduler as-gateway; do
             SRC="sca-registry.cn-hangzhou.cr.aliyuncs.com/agentscope/${img}:2.1.0-BETA1"
             for plat in linux/arm64 linux/amd64; do
-              echo "=== pull $SRC ($plat)"
-              docker pull --platform=$plat "$SRC"
               TAG=$(echo "$plat" | tr '/' '_')
               TARGET="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/${img}:${TAG}"
-              docker tag "$SRC" "$TARGET"
-              echo "=== push $TARGET"
-              docker push "$TARGET"
-              docker rmi "$SRC" || true
+              # 用 imagetools 在 registry 侧直接复制（不下载层，快）；
+              # 指定 --platform 会丢掉源镜像里的 attestation 空 manifest（我们 ACR 不收那个）
+              echo "=== copy $SRC ($plat) -> $TARGET"
+              docker buildx imagetools create --tag "$TARGET" --platform "$plat" "$SRC"
             done
           done
 
